@@ -130,10 +130,49 @@ summary(glm_mmt)
 ##2nd Iteration
 glm_mmt <- glm(P ~ H + I + J + K + N , family = binomial(link= "logit"), data = Train_mmt1)
 summary(glm_mmt) ## AIC 400.21 which is better then the first iteration
-pred_mmt1 <- predict(glm_mmt, newdata = subset(Test_mmt1,select = c(8,9,10,11,14)), type = 'response')
+pred_mmt1 <- predict(glm_mmt, newdata = subset(Train_mmt1,select = c(8,9,10,11,14)), type = 'response')
 pred_mmt1 = ifelse(pred_mmt1 > 0.5,1,0)
-confusionMatrix(Train_mmt1$P,pred_mmt1)
+pred_mmt1 = as.integer(pred_mmt1)
+str(pred_mmt1)
+str(Train_mmt1$P)
+
+## Decision tree ##
+
+dec_mmt <- rpart(P~.,data = Train_mmt1, control = rpart.control(cp=0.05,maxdepth = 5,minsplit = 10,
+                                                               minbucket = 3))
+summary(dec_mmt)
+plot(dec_mmt)
+rpart.plot(dec_mmt)
+pred_dec1 = predict(dec_mmt,Test_mmt1)
+pred_dec1 = ifelse(pred_dec1 > 0.5,1,0)
+pred_dec1 = as.integer(pred_dec1)
+str(pred_dec1)
+confusionMatrix(pred_dec1,Train_mmt1$P)
+
+Test_mmt$P = pred_dec1
+Submission = subset(Test_mmt,select = c(1,17))
+
+##Random Forest ##
+set.seed(415)
+Ran_mmt <- randomForest(as.factor(P) ~ .,
+                   data=Train_mmt1, importance=TRUE, ntree=2000)
+varImp(Ran_mmt) ## F,H,I,J,N.O
+
+Ran_mmt1 <- randomForest(as.factor(P) ~ F + H + I + J + N + O,
+                        data=Train_mmt1, importance=TRUE, ntree=2000)
+varImpPlot(Ran_mmt)
+
+pred_ran = predict(Ran_mmt,Test_mmt1)
+Test_mmt$P = pred_ran
+Submission1 = subset(Test_mmt,select = c(1,17))
+
+pred_ran1 = predict(Ran_mmt1,Test_mmt1)
+Test_mmt$P = pred_ran1
+Submission2 = subset(Test_mmt,select = c(1,17))
+
+write.csv(Submission2, file = "submission2.csv") 
+##confusionMatrix(Train_mmt1$P,pred_mmt1)
 
 
 ##Target data class balance check##
-table(Train_mmt$P)
+table(Train_mmt$H)
